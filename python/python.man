@@ -6,7 +6,7 @@ SYNOPSIS
 
 DESCRIPTION
   `python` executes marshalled python code using a state machine
-  It is also possible to require('python') and then call execfile('something.pyc')
+  It is also possible to require('python/python') and then call execfile('something.pyc')
   The return from execfile is the return value from the marshalled code object 
   (usually None), and the global frame for the file.  The variables defined in the
   python code can be retrieved from frame.locals.  

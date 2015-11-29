@@ -49,11 +49,11 @@ dotry=function(func,frame)
     return e
 end
 
-local IEEE754 = require('IEEE754')
-require('stack')
-primitives=require('primitives')
+local IEEE754 = require('python/IEEE754')
+require('python/stack')
+primitives=require('python/primitives')
 StopIteration = primitives.StopIteration
-local builtins = setmetatable(require('builtins'), {__index=_G})
+local builtins = setmetatable(require('python/builtins'), {__index=_G})
 builtins.dotry=dotry
 local PYTHONPATH={"/usr/lib/python2"}
 local path
