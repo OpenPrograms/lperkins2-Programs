@@ -68,6 +68,10 @@ class Label(BaseComponent):
         self.instance=True
         self.gui=gui
         self.bc=self.label=gui.gui.addLabel(gui.gui, x,y,w,t)
+    def setText(self, txt):
+        self.label.text=txt
+        if self.gui.running:
+            self.gui.doIteration()
 
 
 class Button(BaseComponent):
