@@ -209,27 +209,27 @@ class Div(object):
     def addLabel(self, x, y, width, txt):
         l = self.gui.addLabel(x, y, width, txt)
         l.setParent(self)
-        self.elements.push(l)
+        self.elements.append(l)
     def addButton(self, x, y, w, h, t, c):
         l = self.gui.addButton(x, y, w, h, t, c)
         l.setParent(self)
-        self.elements.push(l)
+        self.elements.append(l)
     def addTextField(self, x, y, w, t=""):
         l = self.gui.addTextField(x, y, w, t)
         l.setParent(self)
-        self.elements.push(l)
+        self.elements.append(l)
     def addListBox(self, x, y, w, h, l):
         l = self.gui.addListBox(x, y, w, h, l)
         l.setParent(self)
-        self.elements.push(l)
+        self.elements.append(l)
     def addTextArea(self, x, y, w, h, t=""):
         l = self.gui.addTextArea(x, y, w, h, t)
         l.setParent(self)
-        self.elements.push(l)
+        self.elements.append(l)
     def addDiv(self):
         d=self.gui.addDiv()
         d.setParent(self)
-        self.elements.push(d)
+        self.elements.append(d)
     def hide(self):
         self.hidden=True
         for child in self.children:
