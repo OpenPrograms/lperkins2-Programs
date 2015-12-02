@@ -183,7 +183,7 @@ class TextArea(BaseComponent):
         self.getScreenPosition=BaseComponent.getScreenPosition
         self.instance=True
         self.gui=gui
-        self.bc=self.textarea=gui.gui.addTextArea(gui.gui, x, y, w, t)
+        self.bc=self.textarea=gui.gui.textfield(gui.gui, x, y, w, t)
     def setText(self, txt):
         self.bc.text=txt
         if self.isHidden():
