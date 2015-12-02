@@ -129,7 +129,7 @@ __test_if_true__ = function( x )
     elseif x == false then return false
     elseif x == nil then return false
     elseif x == '' then return false
-
+    elseif x == None then return false
     elseif type(x) == 'number' then
         if x == 0 then return false
         else return true
