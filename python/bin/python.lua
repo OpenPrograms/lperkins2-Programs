@@ -1100,6 +1100,24 @@ function POP_JUMP_IF_FALSE(target)
     end
 end
 
+function JUMP_IF_TRUE_OR_POP(target)
+    target=target[1]+target[2]*256+1
+    local a = STACK:pop()
+    if __test_if_true__(a) then
+        STACK:push(a)
+        FRAMES.current.idx = target
+    end
+end
+
+function JUMP_IF_FALSE_OR_POP(target)
+    target=target[1]+target[2]*256+1
+    local a = STACK:pop()
+    if not __test_if_true__(a) then
+        STACK:push(a)
+        FRAMES.current.idx = target
+    end
+end
+
 function POP_JUMP_IF_TRUE(target)
     target=target[1]+target[2]*256+1
     local a = STACK:pop()
@@ -1219,9 +1237,13 @@ opcode_sizes[4]=0
 opcode_sizes[2]=0
 opcode_sizes[57]=0
 opcode_sizes[12]=0
+opcode_sizes[112]=2
+opcode_sizes[111]=2
 
 
 opmap = {}
+opmap[111]=JUMP_IF_FALSE_OR_POP
+opmap[112]=JUMP_IF_TRUE_OR_POP
 opmap[12]=UNARY_NOT
 opmap[140]=CALL_FUNCTION_VAR
 opmap[57]=INPLACE_MULTIPLY
