@@ -464,7 +464,7 @@ end
 
 function UNARY_NOT()
     local a=STACK:pop()
-    STACK:push(not a)
+    STACK:push(not __test_if_true__(a))
 end
 
 function UNARY_CONVERT()
