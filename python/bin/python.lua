@@ -1217,9 +1217,11 @@ opcode_sizes[60]=0
 opcode_sizes[4]=0
 opcode_sizes[2]=0
 opcode_sizes[57]=0
+opcode_sizes[12]=0
 
 
 opmap = {}
+opmap[12]=UNARY_NOT
 opmap[140]=CALL_FUNCTION_VAR
 opmap[57]=INPLACE_MULTIPLY
 opmap[28]=INPLACE_FLOOR_DIVIDE
