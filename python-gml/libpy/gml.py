@@ -1,6 +1,6 @@
 gml=require('gml')
 gmlr=require('gmlReactor')
-
+keyboard=require('keyboard')
 null_event=list()
 null_event.append("gui_tick")
 
@@ -174,7 +174,9 @@ class TextArea(BaseComponent):
         if self.instance==False:
             return "<class gml.TextArea>"
         return "<gml.TextArea instance>"
-    def __init__(self, gui, x, y, w, h, t):
+    def __init__(self, gui, x, y, w, h, t, vheight=0, expandable=True):
+        if vheight<h:
+            vheight=h
         self.setParent=BaseComponent.setParent
         self.hide=BaseComponent.hide
         self.show=BaseComponent.show
@@ -183,7 +185,109 @@ class TextArea(BaseComponent):
         self.getScreenPosition=BaseComponent.getScreenPosition
         self.instance=True
         self.gui=gui
-        self.bc=self.textarea=gui.gui.textfield(gui.gui, x, y, w, t)
+        self.height=h
+        self.vheight=vheight
+        self.expandable=expandable
+        self.lines=list()
+        text = str(t).split('\n')
+        self.text=list.staticFromTable(text)
+        self.vpos=0
+        idx=0
+        while idx < h:
+            line=gui.addTextField(x,y+idx,w,text[idx])
+            line.bc.okeyHandler = line.bc.keyHandler
+            line.bc.keyHandler=self.handleKey
+            line.bc.ta=self
+            line.idx=idx
+            self.lines.append(line)
+            idx=idx+1
+    def handleKey(line, char, code):
+        self=line.ta
+        if code==keyboard.keys.left:
+            if line.cursorIndex==0:
+                if line.idx==0:
+                    self.vpos=self.vpos-1
+                    if self.vpos<0:
+                        self.vpos=0
+                    self.redraw()
+                    line.cursorIndex=len(line.text)
+                else:
+                    self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx-1])
+                    self.lines[line.idx-1].cursorIndex=len(self.lines[line.idx+1].text)
+                return
+        elif code==keyboard.keys.right:
+            if line.cursorIndex==len(line.text):
+                if line.idx<self.height-1:
+                    self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx+1])
+                    self.lines[line.idx+1].cursorIndex=0
+                else:
+                    self.vpos=self.vpos+1
+                    self.redraw()
+                    line.cursorIndex=0
+                return
+                
+        elif code==keyboard.keys.up:
+            if line.idx==0:
+                self.vpos=self.vpos-1
+                if self.vpos<0:
+                    self.vpos=0
+                self.redraw()
+            else:
+                self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx-1])
+                self.lines[line.idx-1].cursorIndex=line.cursorIndex
+            return
+        elif code==keyboard.keys.down:
+            if line.idx==self.height-1:
+                self.vpos=self.vpos+1
+                self.redraw()
+            else:
+                self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx+1])
+                self.lines[line.idx+1].cursorIndex=line.cursorIndex
+                return
+        elif code==keyboard.keys.enter:
+            txt=line.text
+            line.text=string.sub(txt, 0,line.cursorIndex)
+            newline = string.sub(txt, line.cursorIndex)
+            idx=line.idx+1
+            END=False
+            while idx < self.vheight:
+                if hasattr(self.text, idx):
+                    ntext=self.text[idx]
+                    self.text[idx]=newline
+                    newline=ntext
+                else:
+                    self.text.append(newline)
+                    END=True
+                    break
+                idx=idx+1
+            if END==False:
+                if self.expandable:
+                    self.text.append(newline)
+                    self.vheight=self.vheight+1
+            self.redraw()
+            return
+        elif code==keyboard.keys.back:
+            if line.cursorIndex==0:
+                if line.idx>0:
+                    txt = self.text.pop(line.idx)
+                    self.text[line.idx-1]=self.text[line.idx-1]+txt
+                    self.redraw()
+            return
+            
+    def redraw(self):
+        for line in self.lines:
+            line.text=""
+        idx=0
+        if self.vpos<0:
+            self.vpos=0
+        while idx < self.height:
+            ln = idx+self.vpos
+            line=self.lines[idx]
+            txt=self.text[ln]
+            line.text=txt
+            
+            
+        
     def setText(self, txt):
         self.bc.text=txt
         if self.isHidden():
