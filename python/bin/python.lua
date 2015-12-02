@@ -308,6 +308,7 @@ builtins['True']=True
 builtins['StopIteration']=StopIteration
 builtins['__name__']='__main__'
 builtins['type']=Type
+builtins.bool=__test_if_true__
 
 local Ellipsis = {}
 
