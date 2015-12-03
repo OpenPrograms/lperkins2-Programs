@@ -221,10 +221,13 @@ end
 
 local TYPES={}
 local function unmarshal(reader)
-    os.sleep(0)
     local action = reader:next()
     if TYPES[action]==nil then
-        print(reader.idx)
+        if hasattr(reader, 'idx') then
+            print("reader pos: ", reader.idx)
+        elseif hasattr(reader, 'pos') then
+            print("reader pos: ", reader.pos)
+        end
         error("unmarshalling encountered unsupported type: "..action:byte())
     end
     local ret = TYPES[action](reader)
@@ -377,6 +380,7 @@ end
 local TYPE_FROZENSET = TYPE_TUPLE 
 
 local TYPE_CODE = function(reader)
+    os.sleep(0)
     local argcount  = readInt(reader, 4)
     local nlocals   = readInt(reader, 4)
     local stacksize = readInt(reader, 4)
@@ -411,10 +415,12 @@ local Reader = function(flo)
         buffer = '',
         read=function(self, l) 
             self.idx=self.idx+l
-            return self.f:read(l) end,
+            local r = self.f:read(l)
+            return r end,
         next=function(self) 
             self.idx = self.idx+1
-            return self.f:read(1) end
+            local r = self.f:read(1)
+            return r end
     }
 end
 
@@ -1239,9 +1245,10 @@ opcode_sizes[57]=0
 opcode_sizes[12]=0
 opcode_sizes[112]=2
 opcode_sizes[111]=2
-
+opcode_sizes[70]=0
 
 opmap = {}
+opmap[70]=PRINT_EXPR
 opmap[111]=JUMP_IF_FALSE_OR_POP
 opmap[112]=JUMP_IF_TRUE_OR_POP
 opmap[12]=UNARY_NOT
@@ -1493,6 +1500,8 @@ builtins.exec=EXECUTE
 builtins.Frame=Frame
 builtins.EXECUTE=EXECUTE
 builtins.FRAMES=FRAMES
+builtins.unmarshal=unmarshal
+builtins.TYPE_CODE=TYPE_CODE
 
 python = {Reader=Reader, load=unmarshalModule,path=PYTHONPATH,execfile=execfile}
 local imported = false

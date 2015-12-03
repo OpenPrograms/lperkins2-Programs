@@ -16,6 +16,7 @@ local target
 local doubleClickThreshold=.25
 local cleanup
 local len = unicode.len
+local cb = {}
 
 local function restoreFrame(renderTarget,x,y,prevState)
 
@@ -337,17 +338,17 @@ function doIteration(gui, e)
     elseif char==3 then
       --copy!
       if gui.focusElement and gui.focusElement.doCopy then
-        clipboard=gui.focusElement:doCopy() or clipboard
+        cb.clipboard=gui.focusElement:doCopy() or cb.clipboard
       end
     elseif char==22 then
       --paste!
-      if gui.focusElement.doPaste and type(clipboard)=="string" then
-        gui.focusElement:doPaste(clipboard)
+      if gui.focusElement.doPaste and type(cb.clipboard)=="string" then
+        gui.focusElement:doPaste(cb.clipboard)
       end
     elseif char==24 then
       --cut!
       if gui.focusElement.doCut then
-        clipboard=gui.focusElement:doCut() or clipboard
+        cb.clipboard=gui.focusElement:doCut() or cb.clipboard
       end
     elseif gui.focusElement and gui.focusElement.keyHandler then
       gui.focusElement:keyHandler(char,code)
@@ -362,4 +363,4 @@ end
 
 
 
-return {setupIteration=setupIteration, doIteration=doIteration, doneIterating=doneIterating}
+return {setupIteration=setupIteration, doIteration=doIteration, doneIterating=doneIterating, clipboard=cb}

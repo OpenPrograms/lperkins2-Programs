@@ -12,7 +12,15 @@ class GML(object):
         return "<gml.GML instance>"
     def __init__(self, x, y, w, h):
         self.instance=True
+        self.x=x
+        self.y=y
+        self.w=w
+        self.h=h
         self.gui=gml.create(x,y,w,h)
+    def redraw(self):
+        #self.gui.redrawRect(self.gui, self.x, self.y, self.w, self.h)
+        self.gui.draw(self.gui)
+        #self.gui.renderTarget.flush(self.gui.renderTarget)
     def addLabel(self, x, y, width, txt):
         return Label(self, x, y, width, txt)
     def addButton(self, x, y, w, h, t, c):
@@ -21,8 +29,8 @@ class GML(object):
         return TextField(self,x,y,w,t)
     def addListBox(self, x, y, w, h, l):
         return ListBox(self, x, y, w, h, l)
-    def addTextArea(self, x, y, w, h, t=""):
-        return TextArea(self,x,y,w,h,t)
+    def addTextArea(self, x, y, w, h, text, vheight, expandable):
+        return TextArea(self,x,y,w,h,text, vheight, expandable)
     def addDiv(self):
         return Div(self)
     def setupIteration(self):
@@ -41,6 +49,8 @@ class GML(object):
         while self.gui.running:
             self.processEvent(event.pull())
         self.doneIterating()
+    def changeFocusTo(self, ele):
+        self.gui.changeFocusTo(self.gui, ele.bc)
 
 
 class BaseComponent(object):
@@ -71,6 +81,7 @@ class BaseComponent(object):
 class Label(BaseComponent):
     instance=False
     parent=None
+    hidden=False
     def __repr__(self):
         if self.instance==False:
             return "<class gml.Label>"
@@ -94,6 +105,7 @@ class Label(BaseComponent):
 class Button(BaseComponent):
     instance=False
     parent=None
+    hidden=False
     def __repr__(self):
         if self.instance==False:
             return "<class gml.Button>"
@@ -123,6 +135,7 @@ class Button(BaseComponent):
 class TextField(BaseComponent):
     instance=False
     parent=None
+    hidden=False
     def __repr__(self):
         if self.instance==False:
             return "<class gml.TextField>"
@@ -149,6 +162,7 @@ class TextField(BaseComponent):
 class ListBox(BaseComponent):
     instance=False
     parent=None
+    hidden=False
     def __repr__(self):
         if self.instance==False:
             return "<class gml.ListBox>"
@@ -170,16 +184,21 @@ class ListBox(BaseComponent):
 class TextArea(BaseComponent):
     instance=False
     parent=None
+    hidden=False
     def __repr__(self):
         if self.instance==False:
             return "<class gml.TextArea>"
         return "<gml.TextArea instance>"
-    def __init__(self, gui, x, y, w, h, t, vheight=0, expandable=True):
+    def hide(self):
+        for line in self.lines:
+            line.hide()
+    def show(self):
+        for line in self.lines:
+            line.show()
+    def __init__(self, gui, x, y, w, h, t, vheight, expandable):
         if vheight<h:
             vheight=h
         self.setParent=BaseComponent.setParent
-        self.hide=BaseComponent.hide
-        self.show=BaseComponent.show
         self.isHidden=BaseComponent.isHidden
         self.contains=BaseComponent.contains
         self.getScreenPosition=BaseComponent.getScreenPosition
@@ -189,18 +208,18 @@ class TextArea(BaseComponent):
         self.vheight=vheight
         self.expandable=expandable
         self.lines=list()
-        text = str(t).split('\n')
-        self.text=list.staticFromTable(text)
+        self.text = str(t).split('\n')
         self.vpos=0
         idx=0
         while idx < h:
-            line=gui.addTextField(x,y+idx,w,text[idx])
+            line=gui.addTextField(x,y+idx,w,"")
             line.bc.okeyHandler = line.bc.keyHandler
             line.bc.keyHandler=self.handleKey
             line.bc.ta=self
-            line.idx=idx
+            line.bc.idx=idx
             self.lines.append(line)
             idx=idx+1
+        self.redraw()
     def handleKey(line, char, code):
         self=line.ta
         if code==keyboard.keys.left:
@@ -212,13 +231,13 @@ class TextArea(BaseComponent):
                     self.redraw()
                     line.cursorIndex=len(line.text)
                 else:
-                    self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx-1])
+                    self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx-1].bc)
                     self.lines[line.idx-1].cursorIndex=len(self.lines[line.idx+1].text)
                 return
         elif code==keyboard.keys.right:
             if line.cursorIndex==len(line.text):
                 if line.idx<self.height-1:
-                    self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx+1])
+                    self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx+1].bc)
                     self.lines[line.idx+1].cursorIndex=0
                 else:
                     self.vpos=self.vpos+1
@@ -233,7 +252,7 @@ class TextArea(BaseComponent):
                     self.vpos=0
                 self.redraw()
             else:
-                self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx-1])
+                self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx-1].bc)
                 self.lines[line.idx-1].cursorIndex=line.cursorIndex
             return
         elif code==keyboard.keys.down:
@@ -241,39 +260,52 @@ class TextArea(BaseComponent):
                 self.vpos=self.vpos+1
                 self.redraw()
             else:
-                self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx+1])
+                self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx+1].bc)
                 self.lines[line.idx+1].cursorIndex=line.cursorIndex
-                return
+            return
         elif code==keyboard.keys.enter:
+            if line.idx==self.height-1:
+                pass
+            else:
+                self.gui.gui.changeFocusTo(self.gui.gui, self.lines[line.idx+1].bc)
+                self.lines[line.idx+1].cursorIndex=1
+            while line.idx>=self.text.length:
+                self.text.append("")
             txt=line.text
-            line.text=string.sub(txt, 0,line.cursorIndex)
+            line.text=string.sub(txt, 0,line.cursorIndex-1)
             newline = string.sub(txt, line.cursorIndex)
-            idx=line.idx+1
-            END=False
-            while idx < self.vheight:
-                if hasattr(self.text, idx):
-                    ntext=self.text[idx]
-                    self.text[idx]=newline
-                    newline=ntext
-                else:
-                    self.text.append(newline)
-                    END=True
-                    break
-                idx=idx+1
-            if END==False:
-                if self.expandable:
-                    self.text.append(newline)
-                    self.vheight=self.vheight+1
+            self.shift(line.idx+1,1)
+            self.text[line.idx]=line.text
+            self.text[line.idx+1]=newline
+            self.lines[line.idx+1].cursorIndex=1
             self.redraw()
             return
         elif code==keyboard.keys.back:
-            if line.cursorIndex==0:
+            if line.cursorIndex==1:
                 if line.idx>0:
                     txt = self.text.pop(line.idx)
                     self.text[line.idx-1]=self.text[line.idx-1]+txt
                     self.redraw()
+                return
+        line.okeyHandler(line, char, code)
+        while self.text.length < line.idx+self.vpos+1:
+            self.text.append('')
+        self.text[line.idx+self.vpos]=line.text
+    def shift(self, sl, dy):
+        if dy < 0:
+            error("Not supported yet")
+        if dy==0:
             return
-            
+        while dy > 1:
+            self.shift(sl, 1)
+            dy=dy-1
+        nl=""
+        while sl < self.text.length-1:
+            l=self.text[sl]
+            self.text[sl]=nl
+            nl=l
+            sl=sl+1
+        self.text.append(nl)
     def redraw(self):
         for line in self.lines:
             line.text=""
@@ -283,18 +315,23 @@ class TextArea(BaseComponent):
         while idx < self.height:
             ln = idx+self.vpos
             line=self.lines[idx]
-            txt=self.text[ln]
-            line.text=txt
-            
+            if hasattr(self.text, ln):
+                txt=self.text[ln]
+                line.bc.text=str(txt).s
+                line.bc.draw(line.bc)
+            else:
+                break
+            idx=idx+1
+    def setText(self, txt):
+        self.text=str(txt).split('\n')
+        self.redraw()
+    def getText(self):
+        text=list()
+        for line in self.text:
+            text.append(str(line).s)
+        return table.concat(text.toTable(), '\n')
             
         
-    def setText(self, txt):
-        self.bc.text=txt
-        if self.isHidden():
-            return
-        self.bc.draw(self.bc)
-        if self.gui.running:
-            self.gui.doIteration()
 
 class Div(object):
     instance=False
@@ -336,11 +373,11 @@ class Div(object):
         self.elements.append(d)
     def hide(self):
         self.hidden=True
-        for child in self.children:
+        for child in self.elements:
             child.hide()
     def show(self):
         self.hidden=False
-        for child in self.children:
+        for child in self.elements:
             child.show()
     def isHidden(self):
         return self.hidden
