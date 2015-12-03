@@ -55,7 +55,7 @@ function table.shallow_copy(t)
 end
 
 
-object = {__name__="object", __tostring=function() return self:__repr__() end, __index=object}
+object = {__name__="object", __tostring=function(self) return self:__repr__() end, __index=object}
 function object:__repr__()
     return "<object "..self.__class__.__name__..">"
 end
