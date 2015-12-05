@@ -1,3 +1,4 @@
+local formatInt
 function typeof(a)
     t=type(a)
     if t=="function" or t=="number" or t=="string" then return t end
@@ -146,7 +147,7 @@ end
 builtins.hasattr=hasattr
 
 for path in (os.getenv("PYTHONPATH") or ""):gmatch('([^:]+)') do
-    table.insert(PYTHONPATH, path)
+    table.insert(PYTHONPATH, 1, path)
 end
 
 print(list:fromTable(PYTHONPATH))
@@ -217,14 +218,49 @@ function searchPath(modname, searchpath)
 end
 
 
-
+local function marshal(obj)
+    if hasattr(obj, '__class__') then
+        if obj.__class__==str then
+            obj=obj.s
+        elseif obj.__class__==list then
+            obj=obj:toTable()
+        else
+            print("marshalling of other python type: "..tostring(obj.__class__).."unsupported")
+            error()
+        end
+    else
+    end
+    if type(obj)=="string" then
+        return "s"..formatInt(#obj, 4)..obj
+    elseif type(obj)=='number' then
+        return "g"..IEEE754.encodeDP(obj)
+    elseif type(obj)=='table' then
+        local o=""
+        if #obj~=0 then
+            for i,v in pairs(obj) do
+                o=o..marshal(v)
+            end
+            return '('..formatInt(#obj,4)..o
+        end
+        for i,v in pairs(obj) do
+            o=o..marshal(i)..marshal(v)
+        end
+        o=o..'0'
+        return '{'..o
+    else
+        error("Unmarshallable type: "..type(obj))
+    end
+end
 
 local TYPES={}
 local function unmarshal(reader)
-    os.sleep(0)
     local action = reader:next()
     if TYPES[action]==nil then
-        print(reader.idx)
+        if hasattr(reader, 'idx') then
+            print("reader pos: ", reader.idx)
+        elseif hasattr(reader, 'pos') then
+            print("reader pos: ", reader.pos)
+        end
         error("unmarshalling encountered unsupported type: "..action:byte())
     end
     local ret = TYPES[action](reader)
@@ -308,6 +344,8 @@ builtins['True']=True
 builtins['StopIteration']=StopIteration
 builtins['__name__']='__main__'
 builtins['type']=Type
+builtins.bool=__test_if_true__
+builtins.marshal=marshal
 
 local Ellipsis = {}
 
@@ -319,6 +357,15 @@ local function readInt(reader, nbytes)
         val = val + tval * 2 ^ (8*(i-1))
     end
     return val
+end
+
+function formatInt(length, nbytes)
+    local s = ""
+    for i=1,nbytes,1 do
+        s=s..string.char(length%256)
+        length=math.floor(length/256)
+    end
+    return s
 end
 
 local string_table_holder = {}
@@ -363,10 +410,10 @@ local TYPE_LIST = TYPE_TUPLE
 
 local TYPE_DICT = function(reader)
     local ret = {}
-    local len = readInt(reader, 4)
+    --local len = readInt(reader, 4)
     local idx
     local key = unmarshal(reader)
-    while key ~= TYPE_NULL do
+    while key ~= TYPE_NULL and key~=nil do
         ret[key] = unmarshal(reader)
         key = unmarshal(reader)
     end
@@ -376,6 +423,7 @@ end
 local TYPE_FROZENSET = TYPE_TUPLE 
 
 local TYPE_CODE = function(reader)
+    os.sleep(0)
     local argcount  = readInt(reader, 4)
     local nlocals   = readInt(reader, 4)
     local stacksize = readInt(reader, 4)
@@ -410,10 +458,12 @@ local Reader = function(flo)
         buffer = '',
         read=function(self, l) 
             self.idx=self.idx+l
-            return self.f:read(l) end,
+            local r = self.f:read(l)
+            return r end,
         next=function(self) 
             self.idx = self.idx+1
-            return self.f:read(1) end
+            local r = self.f:read(1)
+            return r end
     }
 end
 
@@ -464,7 +514,7 @@ end
 
 function UNARY_NOT()
     local a=STACK:pop()
-    STACK:push(not a)
+    STACK:push(not __test_if_true__(a))
 end
 
 function UNARY_CONVERT()
@@ -606,7 +656,13 @@ end
 
 function STORE_SUBSCR()
     local a,b,c = STACK:pop(3)
-    b[a]=c
+    if hasattr(b, '__setitem__') then
+        b:__setitem__(a,c)
+    elseif hasattr(b, "__class__") then
+        error("TypeError: '"..b.__class__.."' object does not support item assignment")
+    else
+        b[a]=c
+    end
 end
 
 function PRINT_EXPR()
@@ -1099,6 +1155,24 @@ function POP_JUMP_IF_FALSE(target)
     end
 end
 
+function JUMP_IF_TRUE_OR_POP(target)
+    target=target[1]+target[2]*256+1
+    local a = STACK:pop()
+    if __test_if_true__(a) then
+        STACK:push(a)
+        FRAMES.current.idx = target
+    end
+end
+
+function JUMP_IF_FALSE_OR_POP(target)
+    target=target[1]+target[2]*256+1
+    local a = STACK:pop()
+    if not __test_if_true__(a) then
+        STACK:push(a)
+        FRAMES.current.idx = target
+    end
+end
+
 function POP_JUMP_IF_TRUE(target)
     target=target[1]+target[2]*256+1
     local a = STACK:pop()
@@ -1163,8 +1237,21 @@ function UNPACK_SEQUENCE(count)
     end
 end
 
+function LIST_APPEND(i)
+    i=i[1]+i[2]*256
+    local tos=STACK:pop()
+    local array=STACK:peek(i-1)
+    if hasattr(array, 'append') then
+        array:append(tos)
+    else
+        table.insert(array, tos)
+    end
+end
+
 local opcode_sizes = {}
+
 opcode_sizes[25]=0
+opcode_sizes[94]=2
 opcode_sizes[92]=2
 opcode_sizes[82]=0
 opcode_sizes[110]=2
@@ -1217,9 +1304,17 @@ opcode_sizes[60]=0
 opcode_sizes[4]=0
 opcode_sizes[2]=0
 opcode_sizes[57]=0
-
+opcode_sizes[12]=0
+opcode_sizes[112]=2
+opcode_sizes[111]=2
+opcode_sizes[70]=0
 
 opmap = {}
+opmap[94]=LIST_APPEND
+opmap[70]=PRINT_EXPR
+opmap[111]=JUMP_IF_FALSE_OR_POP
+opmap[112]=JUMP_IF_TRUE_OR_POP
+opmap[12]=UNARY_NOT
 opmap[140]=CALL_FUNCTION_VAR
 opmap[57]=INPLACE_MULTIPLY
 opmap[28]=INPLACE_FLOOR_DIVIDE
@@ -1270,7 +1365,7 @@ opmap[125]=STORE_FAST
 opmap[107]=COMPARE_OP
 opmap[56]=INPLACE_SUBTRACT
 opmap[114]=POP_JUMP_IF_FALSE
-opmap[115]=POP_JUMP_IF_FALSE
+opmap[115]=POP_JUMP_IF_TRUE
 opmap[103]=BUILD_LIST
 opmap[95]=STORE_ATTR
 
@@ -1459,8 +1554,8 @@ function execfile(path)
     local reader=python.Reader(f)
     local m=python.load(reader)
     local frame = Frame:create(m)
-    --return EXECUTE(frame), frame
-    return dotry(EXECUTE,frame), frame
+    return EXECUTE(frame), frame
+    --return dotry(EXECUTE,frame), frame
 end
 builtins.Reader=Reader
 builtins.load=unmarshalModule
@@ -1468,6 +1563,8 @@ builtins.exec=EXECUTE
 builtins.Frame=Frame
 builtins.EXECUTE=EXECUTE
 builtins.FRAMES=FRAMES
+builtins.unmarshal=unmarshal
+builtins.TYPE_CODE=TYPE_CODE
 
 python = {Reader=Reader, load=unmarshalModule,path=PYTHONPATH,execfile=execfile}
 local imported = false
