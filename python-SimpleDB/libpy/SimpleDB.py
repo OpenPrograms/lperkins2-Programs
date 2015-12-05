@@ -11,9 +11,7 @@ class SimpleDB(object):
         return "<SimpleDB.SimpleDB instance (path='"+self.path+"')>"
     def initialize(self):
         f=open(self.path+'/index.json','w')
-        print >> f, encode({
-            'classes':{},
-        })
+        print >> f, '{"classes": {}}'
         f.close(f)
         filesystem.makeDirectory(self.path+'/keys')
     def open(self):
