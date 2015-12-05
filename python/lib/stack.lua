@@ -16,7 +16,9 @@ function Stack:Create()
   local t = {}
   -- entry table
   t._et = {}
-
+  function t:peek(depth)
+    return t._et[#t._et-depth]
+  end
   -- push a value on to the stack
   function t:push(...)
     if ...~=nil then
