@@ -34,6 +34,11 @@ class SimpleDB(object):
         self[key]=val
     def get(self, key):
         return self[key]
+    def unset(self, key):
+        if hasattr(self.nodes, item):
+            l=self.nodes[item]
+            l.unset()
+            del self.nodes[item]
     def save(self):
         for c in self.nodes:
             c.save()
@@ -65,7 +70,7 @@ class Leaf(object):
         self.value=value
         self.dirty=True
     def save(self):
-        if self.dirty:
+        if self.dirty and self.value!=self.undefined:
             segments=str(self.abspath).split('/')
             fn=segments.pop(segments.length-1)
             segments=[i.s for i in segments]
@@ -76,4 +81,15 @@ class Leaf(object):
             m=marshal(self.value)
             f.write(f, m)
             f.close(f)
-            
+    def unset(self):
+        segments=str(self.abspath).split('/')
+        fn=segments.pop(segments.length-1)
+        segments=[i.s for i in segments]
+        directory=table.concat(segments.toTable(),'/')
+        if not filesystem.exists(directory):
+            return
+        if filesystem.exists(self.abspath):
+            filesystem.remove(self.abspath)
+        self.value=self.undefined
+        self.dirty=False
+        

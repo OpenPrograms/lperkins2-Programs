@@ -1248,6 +1248,18 @@ function LIST_APPEND(i)
     end
 end
 
+function DELETE_SUBSCR()
+    local tos=STACK:pop()
+    local tos1=STACK:pop()
+    if hasattr(tos1, '__class__') then
+        if hasattr(tos1, '__delitem__') then
+            tos1:__delitem__(tos)
+        end
+    else
+        tos1[tos]=nil
+    end
+end
+
 local opcode_sizes = {}
 
 opcode_sizes[25]=0
@@ -1297,6 +1309,7 @@ opcode_sizes[80]=0
 opcode_sizes[73]=0
 opcode_sizes[74]=0
 opcode_sizes[54]=0
+opcode_sizes[61]=0
 opcode_sizes[95]=2
 opcode_sizes[103]=2
 opcode_sizes[140]=2
@@ -1310,6 +1323,7 @@ opcode_sizes[111]=2
 opcode_sizes[70]=0
 
 opmap = {}
+opmap[61]=DELETE_SUBSCR
 opmap[94]=LIST_APPEND
 opmap[70]=PRINT_EXPR
 opmap[111]=JUMP_IF_FALSE_OR_POP
@@ -1573,7 +1587,7 @@ for i,v in pairs({...}) do
         imported = true
     end
 end
-if ...=="python" or imported then
+if ...=="python/python" or imported then
     return python
 else
     if arg==nil then
