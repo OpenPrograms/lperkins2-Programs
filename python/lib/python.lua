@@ -1573,7 +1573,7 @@ for i,v in pairs({...}) do
         imported = true
     end
 end
-if ...=="python" or imported then
+if ...=="python/python" or imported then
     return python
 else
     if arg==nil then
